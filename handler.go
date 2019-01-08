@@ -24,6 +24,9 @@ type Handler interface {
 	// ConsiderEvent adds a new recent event result to the history
 	ConsiderEvent(isError bool)
 
+	// GetProbability() returns probability of an error on the next try
+	GetProbability() float64
+
 	// IsExceeded checks if the error rate is exceeded and we cannot process a new event
 	IsExceeded() bool
 }
@@ -45,9 +48,14 @@ func (h *handler) ConsiderEvent(isError bool) {
 	h.errorProbability.Set((h.errorProbability.Get()*errorProbabilityInertness + currentErrorValue) / (errorProbabilityInertness + 1))
 }
 
+// GetProbability() returns probability of an error on the next try
+func (h *handler) GetProbability() float64 {
+	return h.errorProbability.Get()
+}
+
 // IsExceeded checks if the error rate is exceeded and we cannot process a new event
 func (h *handler) IsExceeded() bool {
 	// It's required to get current error probability (based on history of considered before events) and do not pass if it exceeded the threshold.
 	// But it will be impossible to lower down the error probability value after it reach the threshold, so sometimes we still randomly pass events.
-	return h.errorProbability.Get()*math.Pow(rand.Float64(), errorCounterTestRandomPassFactor) > errorProbabilityThreshold
+	return h.GetProbability()*math.Pow(rand.Float64(), errorCounterTestRandomPassFactor) > errorProbabilityThreshold
 }

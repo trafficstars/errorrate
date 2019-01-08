@@ -45,11 +45,19 @@ func TestHandler(t *testing.T) {
 		t.Errorf("Not enough exceeded: %v < %v*0.95", exceededCount, errorProbabilityInertness*testingRedundancyFactor)
 	}
 
+	if handler.GetProbability() < 0.95 {
+		t.Errorf("probability (%v) < 0.95", handler.GetProbability())
+	}
+
 	for i := 0; i <= errorProbabilityInertness*testingRedundancyFactor; i++ {
 		handler.ConsiderEvent(false)
 	}
 
 	if handler.IsExceeded() {
 		t.Errorf("We have a long history without any error, but got a true on IsExceeded()")
+	}
+
+	if handler.GetProbability() > 0.05 {
+		t.Errorf("probability (%v) > 0.05", handler.GetProbability())
 	}
 }
