@@ -8,9 +8,9 @@ import (
 )
 
 const (
-	errorProbabilityInertness        = 1000    // In events amount. It defines how much event is required to essentially change errorProbability value.
-	errorProbabilityThreshold        = 0.67    // On which level of error probability it's required to bounce (IsExceeded() -> true).
-	errorCounterTestRandomPassFactor = 1.0 / 8 // If we reached the threshold then we still need to pass events sometimes (to be able to down the probability value back down in future). The more this value the more new events are passed even the threshold is reached.
+	errorProbabilityInertness        = 1000     // In events amount. It defines how much event is required to essentially change errorProbability value.
+	errorProbabilityThreshold        = 0.67     // On which level of error probability it's required to bounce (IsExceeded() -> true).
+	errorCounterTestRandomPassFactor = 1.0 / 16 // If we reached the threshold then we still need to pass events sometimes (to be able to down the probability value back down in future). The more this value the more new events are passed even the threshold is reached.
 )
 
 type handler struct {
