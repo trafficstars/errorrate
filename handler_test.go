@@ -58,6 +58,24 @@ func TestHandler(t *testing.T) {
 		t.Errorf("probability (%v) < 0.95", handler.GetErrorProbability())
 	}
 
+	b, err := handler.MarshalJSON()
+	if err != nil {
+		t.Errorf(`Cannot MarshalJSON(): %v`, err)
+	}
+
+	handler.SetErrorProbability(0)
+	if handler.GetErrorProbability() != 0 {
+		t.Errorf("probability (%v) != 0", handler.GetErrorProbability())
+	}
+
+	err = handler.UnmarshalJSON(b)
+	if err != nil {
+		t.Errorf(`Cannot UnmarshalJSON(): %v`, err)
+	}
+	if handler.GetErrorProbability() < 0.95 {
+		t.Errorf("probability (%v) < 0.95", handler.GetErrorProbability())
+	}
+
 	for i := 0; i <= errorProbabilityInertness*testingRedundancyFactor; i++ {
 		go func() {
 			wg.Add(1)

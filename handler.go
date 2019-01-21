@@ -3,6 +3,8 @@ package errorrate
 // relaxation-exponent curve that represents errors rate (as a probability values — in [0:1))
 
 import (
+	"bytes"
+	"encoding/json"
 	"math"
 	"math/rand"
 )
@@ -24,17 +26,26 @@ type Handler interface {
 	// ConsiderEvent adds a new recent event result to the history
 	ConsiderEvent(isError bool)
 
-	// GetErrorProbability() returns probability of an error on the next try
+	// GetErrorProbability returns the probability of an error on the next try
 	GetErrorProbability() float64
+
+	// SetErrorProbability sets the probability of an error on the next try
+	SetErrorProbability(float64)
 
 	// IsExceeded checks if the error rate is exceeded and we cannot process a new event
 	IsExceeded() bool
+
+	// UnmarshalJSON is the custom JSON unmarshaler
+	UnmarshalJSON(data []byte) error
+
+	// MarshalJSON is the custom JSON Marshaler
+	MarshalJSON() ([]byte, error)
 }
 
 // NewHandler creates a new ready-to-use Handler
-func NewHandler() Handler {
+func NewHandler() *handler {
 	h := &handler{}
-	h.errorProbability.Set(errorProbabilityThreshold) // We start from the threshold to be more sensitive on the start. If there will be no errors in the start then there will be no bounces.
+	h.SetErrorProbability(errorProbabilityThreshold) // We start from the threshold to be more sensitive on the start. If there will be no errors in the start then there will be no bounces.
 
 	return h
 }
@@ -48,7 +59,12 @@ func (h *handler) ConsiderEvent(isError bool) {
 	h.errorProbability.Set((h.errorProbability.Get()*errorProbabilityInertness + currentErrorValue) / (errorProbabilityInertness + 1))
 }
 
-// GetErrorProbability() returns probability of an error on the next try
+// SetErrorProbability sets the probability of an error on the next try
+func (h *handler) SetErrorProbability(newErrorProbability float64) {
+	h.errorProbability.Set(newErrorProbability)
+}
+
+// GetErrorProbability returns the probability of an error on the next try
 func (h *handler) GetErrorProbability() float64 {
 	return h.errorProbability.Get()
 }
@@ -58,4 +74,41 @@ func (h *handler) IsExceeded() bool {
 	// It's required to get current error probability (based on history of considered before events) and do not pass if it exceeded the threshold.
 	// But it will be impossible to lower down the error probability value after it reach the threshold, so sometimes we still randomly pass events.
 	return h.GetErrorProbability()*math.Pow(rand.Float64(), errorCounterTestRandomPassFactor) > errorProbabilityThreshold
+}
+
+func (h *handler) UnmarshalJSON(data []byte) error {
+	raw := map[string]json.RawMessage{}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	for k, v := range raw {
+		switch k {
+		case `error_probability`:
+			if err := h.errorProbability.UnmarshalJSON(v); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (h *handler) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	buf.WriteByte('{')
+
+	{
+		// writting the "h.errorProbability"
+
+		buf.WriteString(`"error_probability":`)
+		b, err := h.errorProbability.MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(b)
+	}
+
+	buf.WriteByte('}')
+	return buf.Bytes(), nil
 }
