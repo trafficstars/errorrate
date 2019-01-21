@@ -2,6 +2,8 @@ package errorrate
 
 import (
 	"math/rand"
+	"runtime"
+	"sync"
 	"testing"
 )
 
@@ -32,9 +34,16 @@ func TestHandler(t *testing.T) {
 	if exceededCount == 0 {
 		t.Errorf("We have only one event and it's an error, but never got a true on IsExceeded()")
 	}
+	var wg sync.WaitGroup
 	for i := 0; i < errorProbabilityInertness*testingRedundancyFactor; i++ {
-		handler.ConsiderEvent(true)
+		go func() {
+			wg.Add(1)
+			runtime.Gosched()
+			handler.ConsiderEvent(true)
+			wg.Done()
+		}()
 	}
+	wg.Wait()
 	exceededCount = 0
 	for i := 0; i < errorProbabilityInertness*testingRedundancyFactor; i++ {
 		if handler.IsExceeded() {
@@ -50,8 +59,14 @@ func TestHandler(t *testing.T) {
 	}
 
 	for i := 0; i <= errorProbabilityInertness*testingRedundancyFactor; i++ {
-		handler.ConsiderEvent(false)
+		go func() {
+			wg.Add(1)
+			runtime.Gosched()
+			handler.ConsiderEvent(false)
+			wg.Done()
+		}()
 	}
+	wg.Wait()
 
 	if handler.IsExceeded() {
 		t.Errorf("We have a long history without any error, but got a true on IsExceeded()")
